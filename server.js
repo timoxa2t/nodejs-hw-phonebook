@@ -1,5 +1,19 @@
 const app = require('./app')
+const mongoose = require('mongoose');
+require('dotenv').config()
 
-app.listen(3000, () => {
-  console.log("Server running. Use our API on port: 3000")
+const connection = mongoose.connect(process.env.DB_HOST, {
+  promiseLibrary: global.Promise,
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+connection.then(() => {
+  app.listen(3000, () => {
+  
+  }) 
 })
+.catch(err => {
+  console.log(err)
+})
+
