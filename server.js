@@ -10,7 +10,7 @@ const connection = mongoose.connect(process.env.DB_HOST, {
 
 connection.then(() => {
   app.listen(3000, () => {
-  
+    console.log("listening on port 3000")
   }) 
 })
 .catch(err => {
