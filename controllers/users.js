@@ -1,6 +1,10 @@
 const userService = require('../services/users')
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const gravatar = require('gravatar');
+const path = require('path')
+const Jimp = require('jimp');
+
 
 async function saltifyPassword(password, saltRounds = 10) {
 	try{
@@ -35,11 +39,14 @@ const registerUser = async (req, res, next) => {
     try{
 		const {email, password, subscription} = req.body
 		const saltyPass = await saltifyPassword(password)
+		const avatarURL = await gravatar.url(email);
+		console.log(avatarURL)
 		const result = await userService.register(
 			{
 				email, 
 				password: saltyPass, 
-				subscription
+				subscription,
+				avatarURL
 			} 
 		)
 		if (result) {
@@ -121,6 +128,26 @@ const changeUserSubscription = async (req, res, next) => {
 	}
 }
 
+const changeUserAvatar = async (req, res, next) => {
+	const avatarURL = path.join(process.cwd(), 'public', 'avatars', req.file.filename)
+	const {_id} = req.user
+	Jimp.read(req.file.path, (err, avatar) => {
+		if(err){
+			res.status(400).json(err)
+			return
+		}
+		avatar
+		.resize(250, 250)
+		.write(avatarURL)
+	})
+
+	await userService.changeAvatarURL({ _id, avatarURL})
+
+	res.json({
+		avatarURL
+	})
+}
+
 
 function createToken({ _id, email}){
     const token = jwt.sign({ _id, email}, process.env.SECRET);
@@ -133,5 +160,6 @@ module.exports = {
 	logoutUser,
 	getUserByToken,
 	getCurrentUser, 
-	changeUserSubscription
+	changeUserSubscription,
+	changeUserAvatar
 }
