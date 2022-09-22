@@ -40,7 +40,6 @@ const registerUser = async (req, res, next) => {
 		const {email, password, subscription} = req.body
 		const saltyPass = await saltifyPassword(password)
 		const avatarURL = await gravatar.url(email);
-		console.log(avatarURL)
 		const result = await userService.register(
 			{
 				email, 
@@ -62,6 +61,7 @@ const registerUser = async (req, res, next) => {
 
 const loginUser = async (req, res, next) => {
 
+	console.log(req.body)
     const { email, password } = req.body;
 	try {
 		const result = await userService.login({ email });
