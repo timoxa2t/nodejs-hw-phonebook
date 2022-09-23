@@ -15,19 +15,26 @@ const formatsLogger = app.get('env') === 'development' ? 'dev' : 'short'
 app.use(logger(formatsLogger))
 app.use(cors())
 app.use(express.json())
+app.use(express.static('public'))
 
 const authorize = (req, res, next) => {
-
-	let token = req.headers.authorization
-	if(token.split(" ").length > 1) {
-		token = token.split(" ")[1]
-	}
 
 	const authorizationFailed = () => {
 		res.status(401).json({
 			message: "Not authorized" 
 		})
+
 	}
+	let token = req.headers.authorization
+	
+	if(!token){
+		authorizationFailed()
+		return
+	}
+
+	if(token.split(" ").length > 1) {
+		token = token.split(" ")[1]
+	}	
 
 	if(!jwt.verify(token, process.env.SECRET)){
 		authorizationFailed()
