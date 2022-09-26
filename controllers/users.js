@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const gravatar = require('gravatar');
 const path = require('path')
 const Jimp = require('jimp');
+const uuid = require('uuid')
+const sendVerificationMail = require("./email")
 
 
 async function saltifyPassword(password, saltRounds = 10) {
@@ -40,17 +42,21 @@ const registerUser = async (req, res, next) => {
 		const {email, password, subscription} = req.body
 		const saltyPass = await saltifyPassword(password)
 		const avatarURL = await gravatar.url(email);
+		const verificationToken = uuid.v4()
 		const result = await userService.register(
 			{
 				email, 
 				password: saltyPass, 
 				subscription,
-				avatarURL
+				avatarURL,
+				verificationToken
 			} 
 		)
 		if (result) {
-			const token = createToken(result)
-			res.status(201).json({user: result, token});
+			// const token = createToken(result)
+			sendVerificationMail(email, verificationToken, req.headers.host)
+			res.status(201).json({user: result});
+
 		}
     } catch (e) {
 		res.status(400).json({ message: e.message })
@@ -61,11 +67,17 @@ const registerUser = async (req, res, next) => {
 
 const loginUser = async (req, res, next) => {
 
-	console.log(req.body)
     const { email, password } = req.body;
+
 	try {
 		const result = await userService.login({ email });
 		if (result && await checkPassword(password, result.password)) {
+			if(!result.verify){
+				res.status(401).json({
+					message: `You must verify your email`,
+				});
+				return
+			}
 			const { _id } = result
 			const token = createToken(result)
 			await userService.updateToken({ _id, token })
@@ -73,7 +85,7 @@ const loginUser = async (req, res, next) => {
 			res.json({user: {email, subscription}, token});
 		} else {
 			res.status(401).json({
-			message: `Email or password is wrong`,
+				message: `Email or password is wrong`,
 			});
 		}
 	} catch (e) {
@@ -148,11 +160,45 @@ const changeUserAvatar = async (req, res, next) => {
 	})
 }
 
+const verifyEmail = async (req, res, next) => {
+	const {verificationToken} = req.params
+
+	const user = await userService.findByVerificationToken({verificationToken})
+
+	if(!user){
+		res.status(400).json({ message: 'User not found' })
+		return
+	}
+
+	await userService.verifyUser(user)
+	res.json({message: 'Verification successful'})
+}
 
 function createToken({ _id, email}){
     const token = jwt.sign({ _id, email}, process.env.SECRET);
     return token
 }
+
+const resendVerificationEmail = async (req, res, next) => {
+	const { email } = req.body
+
+	if(!email){
+		res.status(400).json({"message":"missing required field email"})
+		return
+	}
+	const user = await userService.checkEmail(email)
+
+	if(!user) {
+		res.status(400).json({"message":"email isn't registered"})
+	}else if(user.verify){
+		res.status(400).json({"message":"Verification has already been passed"})
+	}else{
+		const sendResult = await sendVerificationMail(email, user.verificationToken, req.headers.host)
+		res.json({"message":"Verification email sent"})
+	}
+}
+
+
 
 module.exports = {
     registerUser,
@@ -161,5 +207,7 @@ module.exports = {
 	getUserByToken,
 	getCurrentUser, 
 	changeUserSubscription,
-	changeUserAvatar
+	changeUserAvatar,
+	verifyEmail,
+	resendVerificationEmail
 }

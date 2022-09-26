@@ -1,7 +1,7 @@
 const User = require('../schemas/user');
 
-const register = ({email, password, subscription, avatarURL}) => {
-  return User.create({email, password, subscription, avatarURL});
+const register = (userBody) => {
+  return User.create(userBody);
 };
 
 const getById = (_id) => {
@@ -36,6 +36,14 @@ const changeAvatarURL = ({ _id, avatarURL }) => {
     return User.findByIdAndUpdate({ _id }, { avatarURL });
 }
 
+const findByVerificationToken = ({verificationToken}) => {
+    return User.findOne({ verificationToken });
+}
+
+const verifyUser = ({ _id }) => {
+    return User.findByIdAndUpdate({ _id }, { verificationToken: null, verify: true });
+}
+
 
 module.exports = {
     register,
@@ -46,5 +54,7 @@ module.exports = {
     getByToken,
     getById,
     changeSubscription,
-    changeAvatarURL
+    changeAvatarURL,
+    findByVerificationToken,
+    verifyUser
 };
